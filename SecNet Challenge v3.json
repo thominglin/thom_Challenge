@@ -17,12 +17,20 @@
             "Properties":{
                 "GroupDescription" : "Allow https to alb and host(s)",
                 "VpcId":"vpc-77994f0d",
-                "SecurityGroupIngress" : [{
-                    "IpProtocol" : "tcp",
-                    "FromPort" : 443,
-                    "ToPort" : 443,
-                    "CidrIp" : "0.0.0.0/0"
-                }]
+                "SecurityGroupIngress" : [
+                    {
+                        "IpProtocol" : "tcp",
+                        "FromPort" : 443,
+                        "ToPort" : 443,
+                        "CidrIp" : "0.0.0.0/0"
+                    },
+                    {
+                        "IpProtocol" : "tcp",
+                        "FromPort" : 80,
+                        "ToPort" : 80,
+                        "CidrIp" : "0.0.0.0/0"
+                    }
+                ]
             }
         },
         "ALB1": {
