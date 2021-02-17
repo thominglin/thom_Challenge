@@ -1,0 +1,149 @@
+{
+	"AWSTemplateFormatVersion": "2010-09-09",
+	"Description": "SecNet Challenge v3",
+	"Mappings": {},
+	"Parameters": {
+        "LatestAmiId": {
+            "Description": "Region specific image from the Parameter Store",
+            "Type": "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>",
+            "Default": "/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2"
+          }
+    },
+	"Metadata": {},
+	"Conditions": {},
+	"Resources": {		
+		"SecurityGroup1":{
+            "Type" : "AWS::EC2::SecurityGroup",
+            "Properties":{
+                "GroupDescription" : "Allow https to alb and host(s)",
+                "VpcId":"vpc-77994f0d",
+                "SecurityGroupIngress" : [{
+                    "IpProtocol" : "tcp",
+                    "FromPort" : 443,
+                    "ToPort" : 443,
+                    "CidrIp" : "0.0.0.0/0"
+                }]
+            }
+        },
+        "ALB1": {
+            "Type" : "AWS::ElasticLoadBalancingV2::LoadBalancer",
+            "Properties" : {
+                "IpAddressType" : "ipv4",
+                "Scheme" : "internet-facing",
+                "SecurityGroups" : [ {"Ref":"SecurityGroup1"} ],
+                "Subnets" : [ "subnet-19bd077e", "subnet-ba9b1a94", "subnet-747f353e" ],
+                "Type" : "application"
+            }
+        },
+        "HTTPListener":{
+            "Type": "AWS::ElasticLoadBalancingV2::Listener",
+            "Properties":{
+                "DefaultActions": [
+                    {
+                        "Type":"redirect",
+                        "RedirectConfig": {
+                            "Host" : "#{host}",
+                            "Path" : "/#{path}",
+                            "Port" : "443",
+                            "Protocol" : "HTTPS",
+                            "Query" : "#{query}",
+                            "StatusCode" : "HTTP_301"
+                        }
+                    }
+                ],
+                "LoadBalancerArn":{"Ref":"ALB1"},
+                "Port":"80",
+                "Protocol":"HTTP"
+            }
+        },
+        "HTTPSListener":{
+            "Type": "AWS::ElasticLoadBalancingV2::Listener",
+			"Properties": {
+				"DefaultActions": [{
+					"Type": "forward",
+					"TargetGroupArn":{"Ref":"TargetGroup1"}
+                }],
+			  	"LoadBalancerArn": {"Ref": "ALB1"},
+			  	"Port": "443",
+			  	"Protocol": "HTTPS",
+                "Certificates": [{"CertificateArn": "arn:aws:iam::905822466440:server-certificate/secnet"}]
+			},
+            "DependsOn": "ServerGroup1"
+        },
+        "TargetGroup1":{
+            "Type" : "AWS::ElasticLoadBalancingV2::TargetGroup",
+            "Properties": {
+                "Port": 443,
+				"Protocol": "HTTPS",
+                "VpcId":"vpc-77994f0d"
+            }
+        },
+        "LaunchConfig1":{
+            "Type":"AWS::AutoScaling::LaunchConfiguration",
+            "Properties":{
+                "IamInstanceProfile": "BootstrapRole",
+				"ImageId":{ "Ref":"LatestAmiId" },
+				"KeyName": "newcrassgroupkey",
+				"SecurityGroups":[ {"Ref":"SecurityGroup1"} ],
+                "InstanceType":"t2.micro",
+                "BlockDeviceMappings":[
+                    {
+                        "DeviceName": "/dev/xvda",
+                        "Ebs": {
+                            "VolumeSize": "20",
+                            "VolumeType": "gp2"
+                        }
+                    }
+                ],
+                "UserData": {
+					"Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#!/bin/bash -xe\n",
+                                "yum update -y\n",
+                                "yum install httpd -y\n",
+                                "service httpd start\n",
+                                "chkconfig httpd on\n",
+                                "cd /var/www/html\n",
+                                "echo \"<html><head><title>We are SecNet!</title></head><body><h1>We are SecNet!</h1></body></html>\"  >  index.html\n",
+                                "yum install -y mod_ssl\n",
+                                "cd /etc/pki/tls/certs\n",
+                                "./make-dummy-cert localhost.crt\n",
+                                "cd /etc/httpd/conf.d\n",
+                                "sed -i.bak 's/^\\(SSLCertificateKeyFile.*\\)/#\\1/g' ssl.conf\n",
+                                "systemctl restart httpd\n",
+                                "openssl req -x509 -nodes -days 365 -newkey rsa:2048 -subj \"/C=US/ST=Pennsylvania/L=Reading/O=secnet/CN=secnet\" -keyout secnetprvKey.key -out secnetcert.crt\n",
+                                "openssl rsa -in secnetprvKey.key -text > secnetprv.pem\n",
+                                "openssl x509 -inform PEM -in secnetcert.crt > secnetpub.pem\n",
+                                "aws iam upload-server-certificate --server-certificate-name secnet --certificate-body file://secnetpub.pem --private-key file://secnetprv.pem\n",
+                                "yum install -y python37\n",
+                                "curl -O https://bootstrap.pypa.io/get-pip.py\n",
+                                "python3 get-pip.py\n",
+                                "export PATH=~/.local/bin:$PATH\n",
+                                "source ~/.bash_profile\n",
+                                "pip install awscli --upgrade --user\n",
+                                "pip install boto3\n",
+                                "aws s3 cp s3://crassgroup-bootstrap/removebootstraprole.py .\n",
+                                "python3 removebootstraprole.py\n"
+                            ]
+                        ]
+                    }
+                }
+            }
+        },
+        "ServerGroup1" : {
+            "Type" : "AWS::AutoScaling::AutoScalingGroup",
+            "Properties" : {
+               "VPCZoneIdentifier" : [ "subnet-19bd077e", "subnet-ba9b1a94", "subnet-747f353e" ],
+               "LaunchConfigurationName" : { "Ref" : "LaunchConfig1" },
+               "MinSize" : "1",
+               "MaxSize" : "3",
+               "HealthCheckGracePeriod" : 300,
+               "MaxInstanceLifetime" : 2592000,
+               "TargetGroupARNs" : [ { "Ref" : "TargetGroup1" } ]
+            }
+        }
+	},
+	"Outputs": {}
+}
