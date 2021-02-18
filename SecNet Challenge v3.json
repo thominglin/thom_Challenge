@@ -153,5 +153,12 @@
             }
         }
 	},
-	"Outputs": {}
+	"Outputs": {
+        "ALBDNSName": {
+			"Description": "The DNS name of the load balancer.",
+			"Value": {
+				"Fn::GetAtt" : [ "ALB1", "DNSName" ]
+			}
+		}
+    }
 }
