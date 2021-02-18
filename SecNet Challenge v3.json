@@ -159,10 +159,6 @@
 			"Value": {
 				"Fn::GetAtt" : [ "ALB1", "DNSName" ]
 			}
-		},
-        "ALBName":{
-            "Description":"The Name of the Load Balancer",
-            "Value":{"Fn::GetAtt":["ALB1", "LoadBalancerName"]}
-        }
+		}
     }
 }
