@@ -140,7 +140,11 @@
                                 "pip install awscli --upgrade --user\n",
                                 "pip install boto3\n",
                                 "aws s3 cp s3://crassgroup-bootstrap/removebootstraprole.py .\n",
-                                "python3 removebootstraprole.py\n"
+                                "python3 removebootstraprole.py\n",
+                                "/opt/aws/bin/cfn-signal -e $? ",
+                                "  --stack ", {"Ref":"AWS::StackName" },
+                                "  --resource ServerGroup1 " ,
+                                "  --region ", {"Ref":"AWS::Region"}, "n"
                             ]
                         ]
                     }
@@ -149,6 +153,12 @@
         },
         "ServerGroup1" : {
             "Type" : "AWS::AutoScaling::AutoScalingGroup",
+            "CreationPolicy":{
+                "ResourceSignal":{
+                    "Count": "1",
+                    "Timeout":"PT10M"
+                }
+            },
             "Properties" : {
                "VPCZoneIdentifier" : [ "subnet-19bd077e", "subnet-ba9b1a94", "subnet-747f353e" ],
                "LaunchConfigurationName" : { "Ref" : "LaunchConfig1" },
