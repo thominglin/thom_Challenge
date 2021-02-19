@@ -121,7 +121,7 @@
                                 "cd /etc/httpd/conf.d\n",
                                 "sed -i.bak 's/^\\(SSLCertificateKeyFile.*\\)/#\\1/g' ssl.conf\n",
                                 "systemctl restart httpd\n",
-                                "cert=$(aws iam get-server-certificate --server-certificate-name secnet --output text)\n",
+                                "cert=$(aws iam list-server-certificates --output text)\n",
                                 "certname='secnet'\n",
                                 "if [[ \"$cert\" == *\"$certname\"* ]]; then\n",
                                 "  echo \"Cert found - nothing to do\"\n",
