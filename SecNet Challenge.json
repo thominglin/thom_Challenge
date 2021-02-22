@@ -1,6 +1,6 @@
 {
 	"AWSTemplateFormatVersion": "2010-09-09",
-	"Description": "SecNet Challenge v3",
+	"Description": "SecNet Challenge v4",
 	"Mappings": {},
 	"Parameters": {
         "LatestAmiId": {
@@ -92,7 +92,8 @@
                 "AWS::CloudFormation::Init":{
                     "configSets":{
                         "linuxconfig":[
-                            "linuxsetup"
+                            "linuxsetup",
+                            "selfsignedcert"
                         ]
                     },
                     "linuxsetup": {
@@ -144,10 +145,29 @@
                                     "files" : ["/etc/cfn/cfn-hup.conf", "/etc/cfn/hooks.d/cfn-auto-reloader.conf"]}
                             }
                         }
-					}
+					},
+                    "selfsignedcert":{
+                        "packages":{
+                            "yum":{
+                                "mod_ssl" : []
+                            }
+                        },
+                        "commands":{
+                            "1-createcert":{
+                                "command": "/etc/pki/tls/certs/make-dummy-cert /etc/pki/tls/certs/localhost.crt"
+                            },
+                            "2-updatesslconf":{
+                                "command": "sed -i.bak 's/^\\(SSLCertificateKeyFile.*\\)/#\\1/g' /etc/httpd/conf.d/ssl.conf"
+                            },
+                            "3-restarthttpd":{
+                                "command": "systemctl restart httpd"
+                            }
+                        }
+                    }
                 }
             },
             "Properties":{
+                "AssociatePublicIpAddress" : "false",
                 "IamInstanceProfile": "BootstrapRole",
 				"ImageId":{ "Ref":"LatestAmiId" },
 				"KeyName": "newcrassgroupkey",
@@ -174,19 +194,13 @@
                                 {
                                     "Ref": "AWS::StackName"
                                 },
-                                "         --resource ServerGroup1 ",
+                                "         --resource LaunchConfig1 ",
                                 "         --configsets linuxconfig ",
                                 "         --region ",
                                 {
                                     "Ref": "AWS::Region"
                                 },
                                 "\n",
-                                "yum install -y mod_ssl\n",
-                                "cd /etc/pki/tls/certs\n",
-                                "./make-dummy-cert localhost.crt\n",
-                                "cd /etc/httpd/conf.d\n",
-                                "sed -i.bak 's/^\\(SSLCertificateKeyFile.*\\)/#\\1/g' ssl.conf\n",
-                                "systemctl restart httpd\n",
                                 "cert=$(aws iam list-server-certificates --output text)\n",
                                 "certname='secnet'\n",
                                 "if [[ \"$cert\" == *\"$certname\"* ]]; then\n",
@@ -210,7 +224,7 @@
                                 "/opt/aws/bin/cfn-signal -e $? ",
                                 "  --stack ", {"Ref":"AWS::StackName" },
                                 "  --resource ServerGroup1 " ,
-                                "  --region ", {"Ref":"AWS::Region"}, "n"
+                                "  --region ", {"Ref":"AWS::Region"}, "\n"
                             ]
                         ]
                     }
@@ -222,7 +236,7 @@
             "CreationPolicy":{
                 "ResourceSignal":{
                     "Count": "1",
-                    "Timeout":"PT10M"
+                    "Timeout":"PT5M"
                 }
             },
             "Properties" : {
