@@ -88,6 +88,65 @@
         },
         "LaunchConfig1":{
             "Type":"AWS::AutoScaling::LaunchConfiguration",
+            "Metadata":{
+                "AWS::CloudFormation::Init":{
+                    "configSets":{
+                        "linuxconfig":[
+                            "linuxsetup"
+                        ]
+                    },
+                    "linuxsetup": {
+						"packages" : {
+                            "yum" : {
+                              "httpd"             : []
+                            }
+                        },
+                        "files": {
+							"/var/www/html/index.html":{
+                                "content": "<html><head><title>We are SecNet!</title></head><body><h1>We are SecNet!</h1></body></html>",
+                                "mode"    : "000644",
+                                "owner"   : "root",
+                                "group"   : "root"
+                            },
+                            "/etc/cfn/cfn-hup.conf": {
+								"content": {
+									"Fn::Join": ["",[
+											"[main]\n",
+											"stack=",{"Ref": "AWS::StackId"},"\n",
+											"region=",{"Ref": "AWS::Region"},"\n"
+										]
+									]
+								},
+								"mode": "000400",
+								"owner": "root",
+								"group": "root"
+							},
+							"/etc/cfn/hooks.d/cfn-auto-reloader.conf": {
+								"content": {
+									"Fn::Join": ["",[
+											"[cfn-auto-reloader-hook]\n",
+											"triggers=post.update\n",
+											"path=Resources.LaunchConfig1.Metadata.AWS::CloudFormation::Init\n",
+											"action=/opt/aws/bin/cfn-init -v"," -s ",{"Ref": "AWS::StackName"}," -r LaunchConfig1"," -configsets linuxconfig"," --region ",{"Ref": "AWS::Region"},"\n",
+											"runas=root\n"
+										]
+									]
+								},
+                                "mode": "000400",
+								"owner": "root",
+								"group": "root"
+							}
+						},
+                        "services":{
+                            "sysvinit":{
+                                "httpd":{ "enabled" : "true", "ensureRunning" : "true" },
+                                "cfn-hup" : { "enabled" : "true", "ensureRunning" : "true",
+                                    "files" : ["/etc/cfn/cfn-hup.conf", "/etc/cfn/hooks.d/cfn-auto-reloader.conf"]}
+                            }
+                        }
+					}
+                }
+            },
             "Properties":{
                 "IamInstanceProfile": "BootstrapRole",
 				"ImageId":{ "Ref":"LatestAmiId" },
@@ -110,11 +169,18 @@
                             [
                                 "#!/bin/bash -xe\n",
                                 "yum update -y\n",
-                                "yum install httpd -y\n",
-                                "service httpd start\n",
-                                "chkconfig httpd on\n",
-                                "cd /var/www/html\n",
-                                "echo \"<html><head><title>We are SecNet!</title></head><body><h1>We are SecNet!</h1></body></html>\"  >  index.html\n",
+                                "/opt/aws/bin/cfn-init -v ",
+                                "         --stack ",
+                                {
+                                    "Ref": "AWS::StackName"
+                                },
+                                "         --resource Instance1 ",
+                                "         --configsets linuxconfig ",
+                                "         --region ",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "\n",
                                 "yum install -y mod_ssl\n",
                                 "cd /etc/pki/tls/certs\n",
                                 "./make-dummy-cert localhost.crt\n",
