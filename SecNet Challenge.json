@@ -174,7 +174,7 @@
                                 {
                                     "Ref": "AWS::StackName"
                                 },
-                                "         --resource Instance1 ",
+                                "         --resource ServerGroup1 ",
                                 "         --configsets linuxconfig ",
                                 "         --region ",
                                 {
