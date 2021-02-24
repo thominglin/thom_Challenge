@@ -92,9 +92,65 @@
                 "AWS::CloudFormation::Init":{
                     "configSets":{
                         "linuxconfig":[
+                            "ConfigureCWLogs-Linux",
                             "linuxsetup",
                             "selfsignedcert"
                         ]
+                    },
+                    "ConfigureCWLogs-Linux": {
+                        "files": {
+                            "/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json" : {
+                                "content": {
+                                    "Fn::Join": [
+										"",
+										[
+                                            "{",
+                                            "   \"agent\": {",
+                                            "     \"logfile\": \"/opt/aws/amazon-cloudwatch-agent/logs/amazon-cloudwatch-agent.log\",",
+                                                {
+                                                    "Fn::Sub": "    \"region\": \"${AWS::Region}\""
+                                                },
+                                            "   },",
+                                            "   \"logs\": {",
+                                            "      \"logs_collected\": {",
+                                            "        \"files\": {",
+                                            "          \"collect_list\": [",
+                                            "            {",
+                                            "             \"file_path\": \"/var/log/cfn-init-cmd.log\",",
+                                                {
+                                                    "Fn::Sub": "             \"log_group_name\": \"${LogGroup}\","
+                                                },
+                                            "             \"log_stream_name\": \"{instance_id}/cfninitlog\",",
+                                            "             \"timezone\": \"UTC\"",
+                                            "           },",
+                                            "           {",
+                                            "             \"file_path\": \"/var/log/cloud-init-output.log\",",
+                                                {
+                                                    "Fn::Sub": "             \"log_group_name\": \"${LogGroup}\","
+                                                },
+                                            "             \"log_stream_name\": \"{instance_id}/userdatalog\",",
+                                            "             \"timezone\": \"UTC\"",
+                                            "           }",
+                                            "         ]",
+                                            "        }",
+                                            "     },",
+                                            "     \"log_stream_name\": \"{instance_id}/logstream\",",
+                                            "     \"force_flush_interval\" : 15",
+                                            "   }",
+                                            " }"
+										]
+									]
+                                }
+                            }
+                        },
+                        "commands": {
+                            "1-stop_service": {
+                                "command": "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a stop"
+                            },
+                            "2-start_service": {
+                                "command": "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json -s"
+                            }
+	                    }
                     },
                     "linuxsetup": {
 						"packages" : {
@@ -188,6 +244,7 @@
                             [
                                 "#!/bin/bash -xe\n",
                                 "yum update -y\n",
+                                "rpm -Uvh https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm\n",
                                 "/opt/aws/bin/cfn-init -v ",
                                 "         --stack ",
                                 {
@@ -246,6 +303,13 @@
                "HealthCheckGracePeriod" : 300,
                "MaxInstanceLifetime" : 2592000,
                "TargetGroupARNs" : [ { "Ref" : "TargetGroup1" } ]
+            }
+        },
+		"LogGroup": {
+			"Type": "AWS::Logs::LogGroup",
+			"DeletionPolicy": "Retain",
+			"Properties": {
+              "RetentionInDays": 7
             }
         }
 	},
