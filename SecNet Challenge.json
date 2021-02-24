@@ -223,6 +223,7 @@
                 }
             },
             "Properties":{
+                "AssociatePublicIpAddress": "false",
                 "IamInstanceProfile": "BootstrapRole",
 				"ImageId":{ "Ref":"LatestAmiId" },
 				"KeyName": "newcrassgroupkey",
