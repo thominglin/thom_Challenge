@@ -12,7 +12,88 @@
 	"Metadata": {},
 	"Conditions": {},
 	"Resources": {		
-		"SecurityGroup1":{
+		"Subneta":{
+            "Type" : "AWS::EC2::Subnet",
+            "Properties" : {
+                "VpcId":"vpc-77994f0d",
+                "CidrBlock":"172.31.96.0/20",
+                "AvailabilityZone": "us-east-1a",
+                "Tags": [{"Key":"Name", "Value":"secnet-private-a"}]
+            }
+        },
+        "Subnetb":{
+            "Type" : "AWS::EC2::Subnet",
+            "Properties" : {
+                "VpcId":"vpc-77994f0d",
+                "CidrBlock":"172.31.112.0/20",
+                "AvailabilityZone": "us-east-1b",
+                "Tags": [{"Key":"Name", "Value":"secnet-private-b"}]
+            }
+        },
+        "Subnetc":{
+            "Type" : "AWS::EC2::Subnet",
+            "Properties" : {
+                "VpcId":"vpc-77994f0d",
+                "CidrBlock":"172.31.128.0/20",
+                "AvailabilityZone": "us-east-1c",
+                "Tags": [{"Key":"Name", "Value":"secnet-private-c"}]
+            }
+        },
+        "ElasticIP":{
+            "Type": "AWS::EC2::EIP",
+            "Properties":{
+                "Domain":"vpc"
+            }
+        },
+        "NATGateway":{
+            "Type" : "AWS::EC2::NatGateway",
+            "Properties" : {
+                "AllocationId" : { "Fn::GetAtt" : ["ElasticIP", "AllocationId"]},
+                "SubnetId" : "subnet-19bd077e",
+                "Tags" : [ {"Key" : "Name", "Value" : "secnet-NAT" } ]
+            },
+            "DependsOn": "ElasticIP"
+        },
+        "RouteTable" : {
+            "Type" : "AWS::EC2::RouteTable",
+            "Properties" : {
+               "VpcId" : "vpc-77994f0d"
+            }
+        },
+        "SubnetaRouteTableAssociation" : {
+            "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties" : {
+                "SubnetId" : { "Ref" : "Subneta" },
+                "RouteTableId" : { "Ref" : "RouteTable" }
+            },
+            "DependsOn": ["RouteTable", "Subneta"]
+        },
+        "SubnetbRouteTableAssociation" : {
+            "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties" : {
+                "SubnetId" : { "Ref" : "Subnetb" },
+                "RouteTableId" : { "Ref" : "RouteTable" }
+            },
+            "DependsOn": ["RouteTable", "Subnetb"]
+        },
+        "SubnetcRouteTableAssociation" : {
+            "Type" : "AWS::EC2::SubnetRouteTableAssociation",
+            "Properties" : {
+                "SubnetId" : { "Ref" : "Subnetc" },
+                "RouteTableId" : { "Ref" : "RouteTable" }
+            },
+            "DependsOn": ["RouteTable", "Subnetc"]
+        },
+        "Route":{
+            "Type" : "AWS::EC2::Route",
+            "Properties" : {
+                "RouteTableId" : { "Ref" : "RouteTable" },
+                "DestinationCidrBlock" : "0.0.0.0/0",
+                "NatGatewayId" : { "Ref" : "NATGateway" }
+            },
+            "DependsOn":"RouteTable"
+        },
+        "SecurityGroup1":{
             "Type" : "AWS::EC2::SecurityGroup",
             "Properties":{
                 "GroupDescription" : "Allow https to alb and host(s)",
@@ -223,7 +304,6 @@
                 }
             },
             "Properties":{
-                "AssociatePublicIpAddress": "false",
                 "IamInstanceProfile": "BootstrapRole",
 				"ImageId":{ "Ref":"LatestAmiId" },
 				"KeyName": "newcrassgroupkey",
@@ -297,14 +377,24 @@
                 }
             },
             "Properties" : {
-               "VPCZoneIdentifier" : [ "subnet-19bd077e", "subnet-ba9b1a94", "subnet-747f353e" ],
+               "VPCZoneIdentifier" : [ {"Ref":"Subneta"}, {"Ref":"Subnetb"}, {"Ref":"Subnetc"} ],
                "LaunchConfigurationName" : { "Ref" : "LaunchConfig1" },
                "MinSize" : "1",
                "MaxSize" : "3",
                "HealthCheckGracePeriod" : 300,
                "MaxInstanceLifetime" : 2592000,
                "TargetGroupARNs" : [ { "Ref" : "TargetGroup1" } ]
-            }
+            },
+            "DependsOn":[
+                "Subneta", 
+                "Subnetb", 
+                "Subnetc", 
+                "NATGateway", 
+                "Route", 
+                "SubnetaRouteTableAssociation", 
+                "SubnetbRouteTableAssociation", 
+                "SubnetcRouteTableAssociation" 
+            ] 
         },
 		"LogGroup": {
 			"Type": "AWS::Logs::LogGroup",
