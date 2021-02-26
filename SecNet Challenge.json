@@ -1,6 +1,6 @@
 {
 	"AWSTemplateFormatVersion": "2010-09-09",
-	"Description": "SecNet Challenge v4",
+	"Description": "SecNet Challenge v6",
 	"Mappings": {},
 	"Parameters": {
         "LatestAmiId": {
