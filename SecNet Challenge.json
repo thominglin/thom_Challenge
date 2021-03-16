@@ -15,6 +15,7 @@
 		"SecnettestFunction":{
             "Type":"AWS::Lambda::Function",
             "Properties":{
+                "FunctionName":"secnettest",
                 "Handler":"secnettest::secnettest.Bootstrap::ExecuteFunction",
                 "Runtime":"dotnetcore3.1",
                 "Code": {
