@@ -22,7 +22,7 @@
                     "S3Key": "secnettest.zip"
                 },
                 "Timeout": 30,
-                "Role": "arn:aws:iam::905822466440:role/service-role/AWSCodePipelineServiceRole-us-east-1-secnet"
+                "Role": "arn:aws:iam::905822466440:role/secnet-Lambda-exec"
             }   
         },
         "Subneta":{
