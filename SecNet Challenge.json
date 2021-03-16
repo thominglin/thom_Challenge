@@ -12,7 +12,20 @@
 	"Metadata": {},
 	"Conditions": {},
 	"Resources": {		
-		"Subneta":{
+		"SecnettestFunction":{
+            "Type":"AWS::Lambda::Function",
+            "Properties":{
+                "Handler":"secnettest::secnettest.Bootstrap::ExecuteFunction",
+                "Runtime":"dotnetcore3.1",
+                "Code": {
+                    "S3Bucket": "crasssecnettest",
+                    "S3Key": "secnettest.zip"
+                },
+                "Timeout": 30,
+                "Role": "arn:aws:iam::905822466440:role/service-role/AWSCodePipelineServiceRole-us-east-1-secnet"
+            }   
+        },
+        "Subneta":{
             "Type" : "AWS::EC2::Subnet",
             "Properties" : {
                 "VpcId":"vpc-77994f0d",
