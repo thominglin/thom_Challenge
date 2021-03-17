@@ -12,7 +12,31 @@
 	"Metadata": {},
 	"Conditions": {},
 	"Resources": {		
-		"SecnettestFunction":{
+		"lambdaexecuterole":{
+            "Type" : "AWS::IAM::Role",
+            "Properties" : {
+                "AssumeRolePolicyDocument" : {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Sid": "",
+                        "Effect": "Allow",
+                        "Principal": {
+                          "Service": "lambda.amazonaws.com"
+                        },
+                        "Action": "sts:AssumeRole"
+                      }
+                    ]
+                },
+                "Description" : "",
+                "ManagedPolicyArns" : [ 
+                    "arn:aws:iam::aws:policy/AWSLambdaExecute", 
+                    "arn:aws:iam::aws:policy/AWSCodePipelineCustomActionAccess" 
+                ],
+                "RoleName" : "secnet-lambda-execute"
+            }
+        },
+        "SecnettestFunction":{
             "Type":"AWS::Lambda::Function",
             "Properties":{
                 "FunctionName":"secnettest",
@@ -23,8 +47,9 @@
                     "S3Key": "secnettest.zip"
                 },
                 "Timeout": 30,
-                "Role": "arn:aws:iam::905822466440:role/secnet-Lambda-exec"
-            }   
+                "Role": {"Fn::GetAtt" : ["lambdaexecuterole", "Arn"] }
+            },
+            "DependsOn": "lambdaexecuterole" 
         },
         "Subneta":{
             "Type" : "AWS::EC2::Subnet",
